@@ -13,9 +13,9 @@ Color ray_color(const Ray& r) {
 int main()
 {	
 	// Window Dimensions
-	const int window_width = 700;
+	const uint window_width = 700;
 	const auto aspect_ratio = (16.0 / 9.0);
-	int window_height = window_width / aspect_ratio;
+	uint window_height = window_width / aspect_ratio;
 	window_height = (window_height >= 1) ? window_height : 1; // Ensure height at least 1
 
 	sf::RenderWindow window(
