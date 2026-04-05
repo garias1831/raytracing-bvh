@@ -2,6 +2,7 @@
 #define VEC2_H
 
 #include <cmath>
+#include <iostream>
 
 class Vec2 {
     public:
@@ -67,7 +68,7 @@ inline Vec2 operator*(double t, const Vec2& u) {
 }
 
 inline Vec2 operator/(const Vec2& v, double t) {
-    return v * 1/t;
+    return v * (1/t);
 }
 
 inline double dot(const Vec2& u, const Vec2& v) {
@@ -76,6 +77,10 @@ inline double dot(const Vec2& u, const Vec2& v) {
 
 inline Vec2 unit_vector(const Vec2& v) {
     return v / v.length();
+}
+
+inline std::ostream& operator<<(std::ostream& out, const Vec2& v) {
+    return out << v[0] << ' ' << v[1];
 }
 
 #endif
