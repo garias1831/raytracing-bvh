@@ -44,6 +44,8 @@ class Vec2 {
         double e[2];
 };
 
+using Point2 = Vec2;
+
 inline Vec2 operator+(const Vec2& u, const Vec2& v) {
     return Vec2(u[0] + v[0], u[1] + v[1]);
 }
