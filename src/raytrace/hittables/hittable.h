@@ -1,8 +1,6 @@
 #ifndef HITTABLE_H
 #define HITTABLE_H
 
-#include "raytrace/ray.h"
-
 /// @brief Stores information about a successful hit.
 class HitRecord {
     public:
