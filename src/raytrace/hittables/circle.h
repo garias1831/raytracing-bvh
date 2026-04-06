@@ -34,6 +34,15 @@ class Circle : public Hittable {
             return true;
         }
 
+        std::unique_ptr<sf::Shape> to_sf(const Color& color) const override {
+            sf::CircleShape rendered(radius);
+            rendered.setOrigin(sf::Vector2f(radius, radius));
+            rendered.setPosition(sf::Vector2f(center.x(), center.y()));
+            rendered.setFillColor(sf::Color(color.ir(), color.ig(), color.ib()));
+            
+            return std::make_unique<sf::CircleShape>(rendered);
+        }
+
     private:
         Point2 center;
         double radius;

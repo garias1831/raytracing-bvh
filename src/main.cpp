@@ -5,6 +5,9 @@
 #include "raytrace/hittables/hittable.h"
 #include "raytrace/hittables/hittable_list.h"
 
+// Assume the pixel grid is inset by 1/2 the pixel to pixel distance (1.0f)
+const Point2 pixel00_loc = Point2(0.5, 0.5);  
+
 Color ray_color(const Ray& r, const HittableList& world) {
 	HitRecord rec;
 	if (world.hit(r, 0, infinity, rec)) {
@@ -30,34 +33,16 @@ int main() {
 
 	// Test Circles (Objects)
 	HittableList world;
-	double blue_radius = 30.0;
-	auto blue_loc = Point2(70, 70);
+	world.add(make_shared<Circle>(Point2(70, 70), 30.0));
+	world.add(make_shared<Circle>(Point2(150, 150), 50.0));
+	world.add(make_shared<Circle>(Point2(350, 300), 50.0));
 
-	double green_radius = 50.0;
-	auto green_loc = Point2(150, 150);
-
-	double magenta_radius = 50.0;
-	auto magenta_loc = Point2(350, 300);
-
-	world.add(make_shared<Circle>(blue_loc, blue_radius));
-	world.add(make_shared<Circle>(green_loc, green_radius));
-	world.add(make_shared<Circle>(magenta_loc, magenta_radius));
-
-	// Test Circles (Graphics)
-	sf::CircleShape blue(blue_radius);
-	blue.setFillColor(sf::Color::Blue);
-	blue.setOrigin(sf::Vector2f(blue_radius, blue_radius)); // Set origin to center of circle
-	blue.setPosition(sf::Vector2f(blue_loc.x(), blue_loc.y()));
-
-	sf::CircleShape green(green_radius);
-	green.setFillColor(sf::Color::Green);
-	green.setOrigin(sf::Vector2f(green_radius, green_radius)); // Set origin to center of circle
-	green.setPosition(sf::Vector2f(green_loc.x(), green_loc.y()));
-
-	sf::CircleShape magenta(magenta_radius);
-	magenta.setFillColor(sf::Color::Magenta);
-	magenta.setOrigin(sf::Vector2f(magenta_radius, magenta_radius)); // Set origin to center of circle
-	magenta.setPosition(sf::Vector2f(magenta_loc.x(), magenta_loc.y()));
+	// Create the sfml graphics repr for each hittable in the world
+	std::vector<std::unique_ptr<sf::Shape>> world_graphics;
+	auto drawcolor = Color(0.231, 0.776, 0.859);
+	for (const auto& obj : world.get_objects()) {
+		world_graphics.push_back(obj->to_sf(drawcolor));
+	}
 
 	// Specify the ray origin
 	int srci = window_width / 2;
@@ -93,9 +78,9 @@ int main() {
 
 		window.clear();
 		window.draw(pixels);
-		window.draw(green);
-		window.draw(blue);
-		window.draw(magenta);
+		for (const auto& shape : world_graphics) {
+			window.draw(*shape);
+		}
 		window.display();
 	}
 }

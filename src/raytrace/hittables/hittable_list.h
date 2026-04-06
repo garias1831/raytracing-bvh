@@ -16,6 +16,8 @@ class HittableList : public Hittable {
             objects.push_back(object);
         }
 
+        const std::vector<shared_ptr<Hittable>>& get_objects() const { return objects; }
+
         bool hit(const Ray& r, double t_min, double t_max, HitRecord& rec) const override {
             bool hit_anything = false;
             auto closest_so_far = t_max;

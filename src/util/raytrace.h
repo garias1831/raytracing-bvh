@@ -5,6 +5,7 @@
 #include <iostream>
 #include <limits>
 #include <memory>
+#include <vector>
 
 // C++ Std Usings
 
@@ -15,9 +16,6 @@ using std::shared_ptr;
 
 const double infinity = std::numeric_limits<double>::infinity();
 const double pi = 3.1415926535897932385;
-
-// Assume the pixel grid is inset by 1/2 the pixel to pixel distance (1.0f)
-const Point2 pixel00_loc = Point2(0.5, 0.5);  
 
 // Utility Functions
 
