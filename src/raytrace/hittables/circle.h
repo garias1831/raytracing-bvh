@@ -7,7 +7,7 @@ class Circle : public Hittable {
     public:
         Circle(const Point2& center, double radius) : center(center), radius(std::fmax(0, radius)) {}
 
-        bool hit(const Ray& r, double t_min, double t_max, HitRecord& rec) const override {
+        bool hit(const Ray& r, Interval ray_t, HitRecord& rec) const override {
             Vec2 cq = center - r.origin();
 
             auto a = r.direction().length_squared();
@@ -21,16 +21,16 @@ class Circle : public Hittable {
 
             auto sqrtd = std::sqrt(discriminant);
             
-            double t = (h - sqrtd) / a;
-            if (t <= t_min || t_max <= t) {
-                t = (h + sqrtd) / a;
-                if (t <= t_min || t_max <= t) {
+            double root = (h - sqrtd) / a;
+            if (!ray_t.surrounds(root)) {
+                root = (h + sqrtd) / a;
+                if (!ray_t.surrounds(root)) {
                     return false;
                 }
             }
 
-            rec.point = r.at(t);
-            rec.t = t;
+            rec.point = r.at(root);
+            rec.t = root;
             return true;
         }
 
@@ -39,7 +39,7 @@ class Circle : public Hittable {
             rendered.setOrigin(sf::Vector2f(radius, radius));
             rendered.setPosition(sf::Vector2f(center.x(), center.y()));
             rendered.setFillColor(sf::Color(color.ir(), color.ig(), color.ib()));
-            
+
             return std::make_unique<sf::CircleShape>(rendered);
         }
 

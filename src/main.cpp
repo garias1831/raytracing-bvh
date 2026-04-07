@@ -10,7 +10,7 @@ const Point2 pixel00_loc = Point2(0.5, 0.5);
 
 Color ray_color(const Ray& r, const HittableList& world) {
 	HitRecord rec;
-	if (world.hit(r, 0, infinity, rec)) {
+	if (world.hit(r, Interval(0, infinity), rec)) {
 		return Color(1.0, 0, 0);
 	}
 

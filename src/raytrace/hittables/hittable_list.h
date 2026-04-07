@@ -18,12 +18,12 @@ class HittableList : public Hittable {
 
         const std::vector<shared_ptr<Hittable>>& get_objects() const { return objects; }
 
-        bool hit(const Ray& r, double t_min, double t_max, HitRecord& rec) const override {
+        bool hit(const Ray& r, Interval ray_t, HitRecord& rec) const override {
             bool hit_anything = false;
-            auto closest_so_far = t_max;
+            auto closest_so_far = ray_t.max;
             HitRecord temp_rec;
             for (const auto& obj : objects) {
-                if (obj->hit(r, t_min, closest_so_far, temp_rec)) {
+                if (obj->hit(r, Interval(ray_t.min, closest_so_far), temp_rec)) {
                     hit_anything = true;
                     closest_so_far = temp_rec.t;
                     rec = temp_rec;

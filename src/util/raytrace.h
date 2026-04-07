@@ -28,5 +28,6 @@ inline double degrees_to_radians(double degrees) {
 #include "raytrace/color.h"
 #include "raytrace/ray.h"
 #include "raytrace/vec2.h"
+#include "raytrace/interval.h"
 
 #endif
