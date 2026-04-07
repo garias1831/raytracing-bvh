@@ -10,7 +10,7 @@ const Point2 pixel00_loc = Point2(0.5, 0.5);
 
 Color ray_color(const Ray& r, const HittableList& world) {
 	HitRecord rec;
-	if (world.hit(r, Interval(0, infinity), rec)) {
+	if (world.hit(r, Interval(0.0, 1.0), rec)) {
 		return Color(1.0, 0, 0);
 	}
 
@@ -36,6 +36,9 @@ int main() {
 	world.add(make_shared<Circle>(Point2(70, 70), 30.0));
 	world.add(make_shared<Circle>(Point2(150, 150), 50.0));
 	world.add(make_shared<Circle>(Point2(350, 300), 50.0));
+	world.add(make_shared<Circle>(Point2(500, 200), 60));
+	world.add(make_shared<Circle>(Point2(550, 100), 10));
+
 
 	// Create the sfml graphics repr for each hittable in the world
 	std::vector<std::unique_ptr<sf::Shape>> world_graphics;
@@ -56,9 +59,9 @@ int main() {
 		for (int i = 0; i < window_width; i++) {
 			
 			auto pixel_center = pixel00_loc + Point2(i, j);
-			auto ray_direction = pixel_center - source;
+			auto ray_direction = source - pixel_center;
 
-			Ray r = Ray(source, ray_direction);
+			Ray r = Ray(pixel_center, ray_direction);
 			Color r_color = ray_color(r, world);
 
 			p = window_width * j + i;
