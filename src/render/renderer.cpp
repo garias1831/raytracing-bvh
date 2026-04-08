@@ -41,10 +41,6 @@ std::unique_ptr<sf::VertexArray> Renderer::pixel_map(const HittableList& world) 
             pixels[p].color = sf::Color(r_color.ir(), r_color.ig(), r_color.ib());
         }
     }
-    auto source_ij = source_loc - pixel00_loc; 
-    int srci = int(source_ij.x());
-    int srcj = int(source_ij.y());
-    pixels[window_width * srcj + srci].color = sf::Color::White;
 
     return make_unique<sf::VertexArray>(pixels);
 }
@@ -55,13 +51,30 @@ void Renderer::initialize() {
     source_loc = pixel00_loc + Point2(window_width, 0);
 }
 
+double square(double x){
+    return x * x;
+}
+
+/**
+ * Return the attenuation of the light source according to inverse square law.
+ * 
+ * Credit: https://lisyarus.github.io/blog/posts/point-light-attenuation.html
+ * 
+ * @return attenuation factor in [0, 1]
+ */
+double attenuation(double d) {
+    double R = 100.0; // R is the distance where the light reaches 1/2 intensity
+    return (1 / (1 + square(d / R)));
+}
+
 Color Renderer::ray_color(const Ray& ray, const Hittable& world) const {
     HitRecord rec;
     if (world.hit(ray, Interval(0.0, 1.0), rec)) {
-        return Color(1.0, 0, 0);
+        return Color(0.0, 0, 0); // Shadow
     }
 
-    Vec2 unit_direction = unit_vector(ray.direction());
-    auto a = 0.5*(unit_direction.y() + 1.0);
-    return (1.0-a)*Color(1.0, 1.0, 1.0) + a*Color(0.5, 0.7, 1.0);
+    auto light_color = Color(93.0/255.0, 12.0/255.0, 237.0/255.0); // Black light
+    double distance = ray.direction().length();
+
+    return attenuation(distance) * light_color;
 }
