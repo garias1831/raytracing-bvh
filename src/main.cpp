@@ -5,31 +5,26 @@
 #include "raytrace/hittables/hittable.h"
 #include "raytrace/hittables/hittable_list.h"
 #include "render/renderer.h"
+#include "render/scene_loader.h"
 
 int main() {	
 	/* Set Renderer properties here ... */
 
 	auto renderer = Renderer();
 
+	// Load the desired scene
+	auto scene_loader = SceneLoader();
+	HittableList world;
+	scene_loader.load(1, world, renderer);
+
+	// Create the sfml window
 	uint window_width = renderer.get_window_width();
 	uint window_height = renderer.get_window_height();
-
-	/* Specify custom lightsource location */
-	renderer.set_source_loc(Point2(window_width / 2, window_height / 2));
 
 	sf::RenderWindow window(
 		sf::VideoMode({ window_width, window_height }), "Raytrace",
 		sf::Style::Titlebar
 	);
-
-	// Test Circles (Objects)
-	HittableList world;
-	world.add(make_shared<Circle>(Point2(70, 70), 30.0));
-	world.add(make_shared<Circle>(Point2(150, 150), 50.0));
-	world.add(make_shared<Circle>(Point2(350, 300), 50.0));
-	world.add(make_shared<Circle>(Point2(500, 200), 60));
-	world.add(make_shared<Circle>(Point2(550, 100), 10));
-
 
 	// Create the sfml graphics repr for each hittable in the world
 	auto world_graphics = renderer.world_graphics(world);

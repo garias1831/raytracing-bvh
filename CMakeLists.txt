@@ -15,6 +15,7 @@ FetchContent_MakeAvailable(SFML)
 add_executable(${PROJECT_NAME} 
     src/main.cpp
     src/render/renderer.cpp
+    src/render/scene_loader.cpp
     src/raytrace/interval.cpp
 )
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_17)

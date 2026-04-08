@@ -2,7 +2,7 @@
 #define HITTABLE_H
 
 #include <SFML/Graphics.hpp>
-#include <memory>
+#include "util/raytrace.h"
 
 /// @brief Stores information about a successful hit.
 class HitRecord {
