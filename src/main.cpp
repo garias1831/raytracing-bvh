@@ -4,27 +4,18 @@
 #include "raytrace/hittables/circle.h"
 #include "raytrace/hittables/hittable.h"
 #include "raytrace/hittables/hittable_list.h"
-
-// Assume the pixel grid is inset by 1/2 the pixel to pixel distance (1.0f)
-const Point2 pixel00_loc = Point2(0.5, 0.5);  
-
-Color ray_color(const Ray& r, const HittableList& world) {
-	HitRecord rec;
-	if (world.hit(r, Interval(0.0, 1.0), rec)) {
-		return Color(1.0, 0, 0);
-	}
-
-	Vec2 unit_direction = unit_vector(r.direction());
-	auto a = 0.5*(unit_direction.y() + 1.0);
-    return (1.0-a)*Color(1.0, 1.0, 1.0) + a*Color(0.5, 0.7, 1.0);
-}
+#include "render/renderer.h"
 
 int main() {	
-	// Window Dimensions
-	const uint window_width = 700;
-	const auto aspect_ratio = (16.0 / 9.0);
-	uint window_height = window_width / aspect_ratio;
-	window_height = (window_height >= 1) ? window_height : 1; // Ensure height at least 1
+	/* Set Renderer properties here ... */
+
+	auto renderer = Renderer();
+
+	uint window_width = renderer.get_window_width();
+	uint window_height = renderer.get_window_height();
+
+	/* Specify custom lightsource location */
+	renderer.set_source_loc(Point2(window_width / 2, window_height / 2));
 
 	sf::RenderWindow window(
 		sf::VideoMode({ window_width, window_height }), "Raytrace",
@@ -41,35 +32,10 @@ int main() {
 
 
 	// Create the sfml graphics repr for each hittable in the world
-	std::vector<std::unique_ptr<sf::Shape>> world_graphics;
-	auto drawcolor = Color(0.231, 0.776, 0.859);
-	for (const auto& obj : world.get_objects()) {
-		world_graphics.push_back(obj->to_sf(drawcolor));
-	}
-
-	// Specify the ray origin
-	int srci = window_width / 2;
-	int srcj = window_height / 2;
-	Point2 source = pixel00_loc + Point2(srci, srcj); // Pixel center
-
-	// Initialize the pixelmap
-	sf::VertexArray pixels(sf::PrimitiveType::Points, window_width * window_height);
-	int p;
-	for (int j = 0; j < window_height; j++) {
-		for (int i = 0; i < window_width; i++) {
-			
-			auto pixel_center = pixel00_loc + Point2(i, j);
-			auto ray_direction = source - pixel_center;
-
-			Ray r = Ray(pixel_center, ray_direction);
-			Color r_color = ray_color(r, world);
-
-			p = window_width * j + i;
-			pixels[p].position = sf::Vector2(float(i), float(j));
-			pixels[p].color = sf::Color(r_color.ir(), r_color.ig(), r_color.ib());
-		}
-	}
-	pixels[window_width * srcj + srci].color = sf::Color::White;
+	auto world_graphics = renderer.world_graphics(world);
+	
+	// Create the pixelmap where we render rays
+	auto pixels = renderer.pixel_map(world);
 
 	while (window.isOpen())
 	{
@@ -80,7 +46,7 @@ int main() {
 		}
 
 		window.clear();
-		window.draw(pixels);
+		window.draw(*pixels);
 		for (const auto& shape : world_graphics) {
 			window.draw(*shape);
 		}
