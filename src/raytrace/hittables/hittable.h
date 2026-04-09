@@ -24,6 +24,7 @@ class Hittable {
             // We want to return a vector / compound type.
             // So stick with a failing default for simplicity
             assert(false && "to_sf() undefined for derived class");
+            return NULL;
         }
 };
 

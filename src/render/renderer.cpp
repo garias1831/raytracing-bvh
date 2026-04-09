@@ -3,6 +3,8 @@
 #include <memory>
 #include <vector>
 #include "raytrace/hittables/hittable.h"
+#include "util/raytrace.h"
+
 
 using std::make_unique;
 

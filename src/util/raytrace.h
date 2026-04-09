@@ -9,7 +9,7 @@
 #include <random>
 
 // C++ Std Usings
-
+using uint = unsigned int;
 using std::make_shared;
 using std::shared_ptr;
 
