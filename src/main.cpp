@@ -15,7 +15,7 @@ int main() {
 	// Load the desired scene
 	auto scene_loader = SceneLoader();
 	HittableList world;
-	scene_loader.load(1, world, renderer);
+	scene_loader.load(2, world, renderer);
 
 	// Create the sfml window
 	uint window_width = renderer.get_window_width();
