@@ -6,22 +6,26 @@
 
 
 // 2D axis-aligned bounding box, used for BVH construction and ray intersection tests.
-class aabb {
+class Aabb {
   public:
     Interval x, y;
 
-    aabb() {} // The default AABB is empty, since intervals are empty by default.
+    Aabb() {} // The default AABB is empty, since intervals are empty by default.
 
-    aabb(const Interval& x, const Interval& y)
+    Aabb(const Interval& x, const Interval& y)
       : x(x), y(y) {}
 
-    aabb(const Point2& a, const Point2& b) {
+    Aabb(const Point2& a, const Point2& b) {
         // Treat the two points a and b as extrema for the bounding box, so we don't require a
         // particular minimum/maximum coordinate order.
 
         x = (a[0] <= b[0]) ? Interval(a[0], b[0]) : Interval(b[0], a[0]);
         y = (a[1] <= b[1]) ? Interval(a[1], b[1]) : Interval(b[1], a[1]);
+    }
 
+    Aabb(const Aabb& bbox0, const Aabb& bbox1) {
+        x = Interval(bbox0.x, bbox1.x);
+        y = Interval(bbox0.y, bbox1.y);
     }
 
     const Interval& axis_interval(int n) const {

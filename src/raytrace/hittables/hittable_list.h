@@ -3,6 +3,7 @@
 
 #include <vector>
 
+#include "aabb.h"
 #include "hittable.h"
 
 class HittableList : public Hittable {
@@ -14,6 +15,7 @@ class HittableList : public Hittable {
 
         void add(shared_ptr<Hittable> object) {
             objects.push_back(object);
+            bbox = Aabb(bbox, object->bounding_box());
         }
 
         const std::vector<shared_ptr<Hittable>>& get_objects() const { return objects; }
@@ -33,8 +35,11 @@ class HittableList : public Hittable {
             return hit_anything;
         }
 
+        Aabb bounding_box() const override { return bbox; }
+
     private:
         std::vector<shared_ptr<Hittable>> objects;
+        Aabb bbox;
 };
 
 #endif

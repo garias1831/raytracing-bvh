@@ -1,6 +1,7 @@
 #include "util/raytrace.h"
 
 #include <SFML/Graphics.hpp>
+#include "raytrace/hittables/bvh.h"
 #include "raytrace/hittables/circle.h"
 #include "raytrace/hittables/hittable.h"
 #include "raytrace/hittables/hittable_list.h"
@@ -28,6 +29,9 @@ int main() {
 
 	// Create the sfml graphics repr for each hittable in the world
 	auto world_graphics = renderer.world_graphics(world);
+
+	// Before ray rendering, initialize the BVH
+	world = HittableList(make_shared<BvhNode>(world));
 	
 	// Create the pixelmap where we render rays
 	auto pixels = renderer.pixel_map(world);

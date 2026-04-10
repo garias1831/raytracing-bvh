@@ -7,7 +7,14 @@ class Interval {
 
         Interval();
 
-        Interval(double min, double max) ;
+        Interval(double min, double max);
+
+        Interval(const Interval& a, const Interval& b) {
+            // Create interval tightly enclosing both inputs (union but made continuous)
+            min = a.min <= b.min ? a.min : b.min;
+            max = a.max >= b.max ? a.max : b.max;
+
+        }
 
         inline double size() const {
             return max - min;
