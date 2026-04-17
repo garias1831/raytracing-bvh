@@ -1,7 +1,7 @@
 #include "util/raytrace.h"
 
 #include <SFML/Graphics.hpp>
-#include "raytrace/hittables/bvh.h"
+#include "raytrace/hittables/bvh/bvh_sequential.h"
 #include "raytrace/hittables/circle.h"
 #include "raytrace/hittables/hittable.h"
 #include "raytrace/hittables/hittable_list.h"
@@ -31,7 +31,7 @@ int main() {
 	auto world_graphics = renderer.world_graphics(world);
 
 	// Before ray rendering, initialize the BVH
-	world = HittableList(make_shared<BvhNode>(world));
+	world = HittableList(make_shared<BvhNodeSequential>(world));
 	
 	// Create the pixelmap where we render rays
 	auto pixels = renderer.pixel_map(world);
