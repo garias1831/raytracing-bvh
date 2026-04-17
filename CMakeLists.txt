@@ -17,6 +17,8 @@ add_executable(${PROJECT_NAME}
     src/render/renderer.cpp
     src/render/scene_loader.cpp
     src/raytrace/interval.cpp
+    src/raytrace/hittables/bvh/bvh_slicing.cpp
+    src/raytrace/hittables/bvh/bvh_slicing.cu
 )
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_17)
 target_link_libraries(${PROJECT_NAME} PRIVATE SFML::Graphics)
