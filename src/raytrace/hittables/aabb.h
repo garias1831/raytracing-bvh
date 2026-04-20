@@ -2,7 +2,7 @@
 #define AABB_H
 
 #include "util/raytrace.h"
-#include "raytrace/interval.h"
+#include "util/cuda_callable.h"
 
 
 // 2D axis-aligned bounding box, used for BVH construction and ray intersection tests.
@@ -10,11 +10,14 @@ class Aabb {
   public:
     Interval x, y;
 
+    CUDA_CALLABLE_MEMBER
     Aabb() {} // The default AABB is empty, since intervals are empty by default.
 
+    CUDA_CALLABLE_MEMBER
     Aabb(const Interval& x, const Interval& y)
       : x(x), y(y) {}
 
+    CUDA_CALLABLE_MEMBER
     Aabb(const Point2& a, const Point2& b) {
         // Treat the two points a and b as extrema for the bounding box, so we don't require a
         // particular minimum/maximum coordinate order.
@@ -23,11 +26,13 @@ class Aabb {
         y = (a[1] <= b[1]) ? Interval(a[1], b[1]) : Interval(b[1], a[1]);
     }
 
+    CUDA_CALLABLE_MEMBER
     Aabb(const Aabb& bbox0, const Aabb& bbox1) {
         x = Interval(bbox0.x, bbox1.x);
         y = Interval(bbox0.y, bbox1.y);
     }
 
+    CUDA_CALLABLE_MEMBER
     const Interval& axis_interval(int n) const {
         if (n == 1) return y;
         return x;

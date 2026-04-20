@@ -8,15 +8,12 @@
 #include <vector>
 #include <random>
 
+#include "constants.h"
+
 // C++ Std Usings
 using uint = unsigned int;
 using std::make_shared;
 using std::shared_ptr;
-
-// Constants
-
-const double infinity = std::numeric_limits<double>::infinity();
-const double pi = 3.1415926535897932385;
 
 // Utility Functions
 
