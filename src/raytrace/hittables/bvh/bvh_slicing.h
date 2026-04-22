@@ -16,9 +16,10 @@ class BvhNodeSlicing : public Hittable {
         Aabb bounding_box() const override;
     
     private:
-        shared_ptr<Hittable> left;
-        shared_ptr<Hittable> right;
-        Aabb bbox;
+        std::vector<shared_ptr<Hittable>> objects;
+        std::vector<Aabb> bvh;
+
+        bool hit_bvh(int i, const Ray&r, Interval ray_t, HitRecord& rec) const;
 };
 
 #endif

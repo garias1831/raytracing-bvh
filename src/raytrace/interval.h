@@ -9,7 +9,7 @@ class Interval {
         double min, max;
 
         CUDA_CALLABLE_MEMBER
-        Interval() : min(infinity), max(infinity) {}
+        Interval() : min(+infinity), max(-infinity) {}
 
         CUDA_CALLABLE_MEMBER
         Interval(double min, double max) : min(min), max(max) {};
