@@ -6,7 +6,7 @@
 
 SceneLoader::SceneLoader() {}
 
-void random_100(HittableList& world, Renderer& renderer) {
+void random_n(HittableList& world, Renderer& renderer, int n) {
     uint window_width = renderer.get_window_width();
 	uint window_height = renderer.get_window_height();
 
@@ -15,7 +15,7 @@ void random_100(HittableList& world, Renderer& renderer) {
 	renderer.set_source_loc(source_loc);
     
     int cx, cy;
-    for (int c = 0; c < 100; c++) {
+    for (int c = 0; c < n; c++) {
         while(true) {
             cx = int(random_double(0, window_width));
             cy = int(random_double(0, window_height));
@@ -37,6 +37,23 @@ void random_100(HittableList& world, Renderer& renderer) {
         world.add(make_shared<Circle>(Circle(Point2(cx, cy), 10)));
     }
 }
+
+void random_100(HittableList& world, Renderer& renderer) {
+    random_n(world, renderer, 100);
+}
+
+void random_1k(HittableList& world, Renderer& renderer) {
+    random_n(world, renderer, 1000);
+}
+
+void random_10k(HittableList& world, Renderer& renderer) {
+    random_n(world, renderer, 10000);
+}
+
+void random_100k(HittableList& world, Renderer& renderer) {
+    random_n(world, renderer, 100000);
+}
+
 
 void starter_circles(HittableList& world, Renderer& renderer) {
     uint window_width = renderer.get_window_width();
@@ -61,8 +78,16 @@ void SceneLoader::load(int scene_id, HittableList& world, Renderer& renderer) co
         case 2:
             random_100(world, renderer);
             break;
+        case 3:
+            random_1k(world, renderer);
+            break;
+        case 4:
+            random_10k(world, renderer);
+            break;
+        case 5:
+            random_100k(world, renderer);
+            break;
         default:
             throw std::invalid_argument("Exceeded maximum scene_id");
     }
-
 }

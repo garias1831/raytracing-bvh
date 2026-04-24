@@ -4,6 +4,7 @@
 #include <vector>
 #include "raytrace/hittables/hittable.h"
 #include "util/raytrace.h"
+#include "util/util_timer.h"
 
 
 using std::make_unique;
@@ -27,6 +28,8 @@ std::vector<std::unique_ptr<sf::Shape>> Renderer::world_graphics(const HittableL
 }
 
 std::unique_ptr<sf::VertexArray> Renderer::pixel_map(const HittableList& world) const {
+    UtilTimer timer("Render Time");
+    
     sf::VertexArray pixels(sf::PrimitiveType::Points, window_width * window_height);
     int p;
     for (int j = 0; j < window_height; j++) {
