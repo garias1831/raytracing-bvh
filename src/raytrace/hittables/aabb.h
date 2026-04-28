@@ -1,6 +1,7 @@
 #ifndef AABB_H
 #define AABB_H
 
+#include <SFML/Graphics.hpp>
 #include "util/raytrace.h"
 #include "util/cuda_callable.h"
 
@@ -61,6 +62,20 @@ class Aabb {
                 return false;
         }
         return true;
+    }
+
+
+    std::unique_ptr<sf::Drawable> to_sf(const Color& color) const {
+        sf::RectangleShape rect;
+        rect.setSize(
+            sf::Vector2f(x.max - x.min, y.max - y.min)
+        );
+        rect.setPosition(sf::Vector2f(x.min, y.min));
+        rect.setFillColor(sf::Color::Transparent);
+        rect.setOutlineThickness(2);
+        rect.setOutlineColor(sf::Color(color.ir(), color.ig(), color.ib()));
+
+        return make_unique<sf::RectangleShape>(rect);
     }
 };
 

@@ -50,7 +50,11 @@ int main() {
 
 	// Before ray rendering, initialize the BVH
 	// TODO: probably want a commandline option to select BVH implementations
-	world = HittableList(make_bvh(world, 1));
+	auto bvh = make_bvh(world, 1);
+	world = HittableList(bvh);
+
+	// TODO: probably want to make drawing bboxes a cmdline arg
+	auto bbox_graphics = renderer.bvh_bboxes(bvh);
 	
 	// Create the pixelmap where we render rays
 	auto pixels = renderer.pixel_map(world);
@@ -67,6 +71,9 @@ int main() {
 		window.draw(*pixels);
 		for (const auto& shape : world_graphics) {
 			window.draw(*shape);
+		}
+		for (const auto& bbox : bbox_graphics) {
+			window.draw(*bbox);
 		}
 		window.display();
 	}

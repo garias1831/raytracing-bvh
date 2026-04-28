@@ -52,23 +52,6 @@ BvhNodeSlicing::BvhNodeSlicing(std::vector<shared_ptr<Hittable>> objects, size_t
     make_slicing_bvh(range_objects, bvh_arr.data(), n);
     bvh = bvh_arr;
     this->objects = range_objects;
-
-    //std::clog << "Finished Initializing BVH on host..." << std::endl;
-
-    // // TODO -- only for small testcases
-    // int i = 0;
-    // for (const auto& node : bvh) {
-    //     auto ix = node.bbox.axis_interval(0);
-    //     auto iy = node.bbox.axis_interval(1);
-
-    //     std::clog << "bbox: " << i << std::endl;
-    //     std::clog << "X: min, max:" << ix.min << " " << ix.max << std::endl; 
-    //     std::clog << "Y min, max:" << iy.min << " " << iy.max << std::endl; 
-    //     std::clog << "left, right: " << node.left << " " << node.right << std::endl;
-    //     printf("\n");
-
-    //     i++;
-    // }
 }
 
 bool BvhNodeSlicing::hit_bvh(int i, const Ray& r, Interval ray_t, HitRecord& rec) const {
@@ -105,3 +88,41 @@ bool BvhNodeSlicing::hit(const Ray& r, Interval ray_t, HitRecord& rec) const {
 }
 
 Aabb BvhNodeSlicing::bounding_box() const { return bvh[0].bbox; }
+
+std::unique_ptr<sf::Drawable> BvhNodeSlicing::to_sf(const Color& color) const {
+    return this->bounding_box().to_sf(color);
+}
+
+std::vector<std::unique_ptr<sf::Drawable>> BvhNodeSlicing::to_sf_collection_internal(int i, const Color& color) const {
+    std::vector<std::unique_ptr<sf::Drawable>> boxes;
+
+    if (i >= bvh.capacity()) return boxes;
+    if (i < 0) return boxes;
+
+    int left = bvh[i].left;
+    int right = bvh[i].right;
+
+    // Don't render bboxes for the leaves
+    int n = objects.size();
+    int depth = log2(next_pow2(n)) + 1;
+
+    int leaf_range_start = pow(2, depth - 1) - 1;
+    if (leaf_range_start <= i) return boxes;
+
+    // Render the bbox and recurse
+    auto boxes_left = to_sf_collection_internal(left, color);
+    auto boxes_right = to_sf_collection_internal(right, color);
+
+    boxes.insert(boxes.end(),
+                 std::make_move_iterator(boxes_left.begin()), 
+                 std::make_move_iterator(boxes_left.end()));
+    boxes.push_back(bvh[i].bbox.to_sf(color));
+    boxes.insert(boxes.end(),
+                 std::make_move_iterator(boxes_right.begin()), 
+                 std::make_move_iterator(boxes_right.end()));
+    return boxes;
+}
+
+std::vector<std::unique_ptr<sf::Drawable>> BvhNodeSlicing::to_sf_collection(const Color& color) const {
+    return to_sf_collection_internal(0, color);
+}

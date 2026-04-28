@@ -13,6 +13,7 @@
 // C++ Std Usings
 using uint = unsigned int;
 using std::make_shared;
+using std::make_unique;
 using std::shared_ptr;
 
 // Utility Functions

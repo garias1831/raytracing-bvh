@@ -40,13 +40,19 @@ class Circle : public Hittable {
 
         Aabb bounding_box() const override { return bbox; }
 
-        std::unique_ptr<sf::Shape> to_sf(const Color& color) const override {
+        std::unique_ptr<sf::Drawable> to_sf(const Color& color) const override {
             sf::CircleShape rendered(radius);
             rendered.setOrigin(sf::Vector2f(radius, radius));
             rendered.setPosition(sf::Vector2f(center.x(), center.y()));
             rendered.setFillColor(sf::Color(color.ir(), color.ig(), color.ib()));
 
             return std::make_unique<sf::CircleShape>(rendered);
+        }
+
+        std::vector<std::unique_ptr<sf::Drawable>> to_sf_collection(const Color& color) const override {
+            std::vector<std::unique_ptr<sf::Drawable>> v;
+            v.push_back(to_sf(color));
+            return v;
         }
 
     private:

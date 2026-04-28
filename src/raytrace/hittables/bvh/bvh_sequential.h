@@ -1,6 +1,7 @@
 #ifndef BVH_SEQUENTIAL_H
 #define BVH_SEQUENTIAL_H
 
+#include <SFML/Graphics.hpp>
 #include "raytrace/hittables/aabb.h"
 #include "raytrace/hittables/hittable.h"
 #include "raytrace/hittables/hittable_list.h"
@@ -52,6 +53,48 @@ class BvhNodeSequential : public Hittable {
         }
 
         Aabb bounding_box() const override { return bbox; }
+
+        std::unique_ptr<sf::Drawable> to_sf(const Color& color) const override {
+            return bbox.to_sf(color);
+        }
+
+        // Draw the Aabbs of the BVH, but not the underlying objects.
+        std::vector<std::unique_ptr<sf::Drawable>> to_sf_collection(const Color& color) const override {
+            std::vector<std::unique_ptr<sf::Drawable>> boxes;
+            auto boxes_left = left->to_sf_collection(color);
+            auto boxes_right = right->to_sf_collection(color);
+            
+            // If we call to_sf_collection() on the leaves of hte BVH,
+            // we re-render the underlying objects using the same color as the
+            // bboxes, so skip them. 
+            if (boxes_left.size() == 1 && boxes_right.size() == 1) {
+                boxes.push_back(to_sf(color));
+                
+                // Slight hack here -- we detect leaves by checking size == 1,
+                // but naively the parents of the leaves would also end up with size 1
+                // if we only returned the parent bbox excluding the leaves.
+                // So append an invisible dummy to guarantee our size checks
+                // only skip the BVH leaves. 
+                sf::CircleShape dummy(1);
+                dummy.setFillColor(sf::Color::Transparent);
+                boxes.push_back(make_unique<sf::CircleShape>(dummy));
+                return boxes;
+            }
+            
+            // Combine bbox arrays
+            // Need move iters here because unique_ptr doesn't support copying
+            boxes.insert(boxes.end(),
+                std::make_move_iterator(boxes_left.begin()), 
+                std::make_move_iterator(boxes_left.end()));
+            
+            
+            boxes.push_back(to_sf(color));
+
+            boxes.insert(boxes.end(),
+                std::make_move_iterator(boxes_right.begin()), 
+                std::make_move_iterator(boxes_right.end()));
+            return boxes;
+        }        
 
     private:
         shared_ptr<Hittable> left;

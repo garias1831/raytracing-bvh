@@ -20,7 +20,7 @@ class Hittable {
 
         virtual Aabb bounding_box() const = 0;
 
-        virtual std::unique_ptr<sf::Shape> to_sf(const Color& color) const {
+        virtual std::unique_ptr<sf::Drawable> to_sf(const Color& color) const {
             // Including this instead of just making it an abstract mthd
             // Because for the HittableList, this is annoying as signature
             // Requires a pointer to a single shape, which would mean
@@ -28,6 +28,21 @@ class Hittable {
             // So stick with a failing default for simplicity
             assert(false && "to_sf() undefined for derived class");
             return NULL;
+        }
+
+        // Return a collection of sf objects
+        // Good if this hittable represents multiple disjoint things, e.g the
+        // bboxes in a BVH. 
+        virtual std::vector<std::unique_ptr<sf::Drawable>> to_sf_collection(const Color& color) const {
+            // Including this instead of just making it an abstract mthd
+            // Because for the HittableList, this is annoying as signature
+            // Requires a pointer to a single shape, which would mean
+            // We want to return a vector / compound type.
+            // So stick with a failing default for simplicity
+            
+            assert(false && "to_sf_collection() undefined for derived class");
+            std::vector<std::unique_ptr<sf::Drawable>> v;
+            return v;
         }
 };
 

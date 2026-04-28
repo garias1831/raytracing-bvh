@@ -3,6 +3,8 @@
 #include <memory>
 #include <vector>
 #include "raytrace/hittables/hittable.h"
+#include "raytrace/hittables/bvh/bvh_sequential.h"
+#include "raytrace/hittables/bvh/bvh_slicing.h"
 #include "util/raytrace.h"
 #include "util/util_timer.h"
 
@@ -17,8 +19,8 @@ void Renderer::set_source_loc(Point2 source) {
     source_loc = source;
 }
 
-std::vector<std::unique_ptr<sf::Shape>> Renderer::world_graphics(const HittableList& world) const {
-    std::vector<std::unique_ptr<sf::Shape>> world_graphics;
+std::vector<std::unique_ptr<sf::Drawable>> Renderer::world_graphics(const HittableList& world) const {
+    std::vector<std::unique_ptr<sf::Drawable>> world_graphics;
     auto drawcolor = Color(0.231, 0.776, 0.859);
     for (const auto& obj : world.get_objects()) {
         world_graphics.push_back(obj->to_sf(drawcolor));
@@ -26,6 +28,13 @@ std::vector<std::unique_ptr<sf::Shape>> Renderer::world_graphics(const HittableL
 
     return world_graphics;
 }
+
+
+std::vector<std::unique_ptr<sf::Drawable>> Renderer::bvh_bboxes(shared_ptr<Hittable> bvh) const {
+    auto drawcolor = Color(0.87, 0.94, 0.29);
+    return bvh->to_sf_collection(drawcolor);
+}
+
 
 std::unique_ptr<sf::VertexArray> Renderer::pixel_map(const HittableList& world) const {
     UtilTimer timer("Render Time");

@@ -22,7 +22,13 @@ class Renderer {
         void set_source_loc(Point2 source);
 
         /** @brief Convert a collection of raytrace objects to sfml-renderable equivalents.*/
-        std::vector<std::unique_ptr<sf::Shape>> world_graphics(const HittableList& world) const;
+        std::vector<std::unique_ptr<sf::Drawable>> world_graphics(const HittableList& world) const;
+        
+        // TODO: we might want to create an abstract BvhNode class here for clarity
+
+        /** @brief Draw the bboxes produced by the BVH */
+        std::vector<std::unique_ptr<sf::Drawable>> bvh_bboxes(shared_ptr<Hittable> bvh) const;
+
 
         /** @brief Return an array of pixels colored based on ray intersections */
         std::unique_ptr<sf::VertexArray> pixel_map(const HittableList& world) const;
