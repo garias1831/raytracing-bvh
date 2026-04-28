@@ -5,6 +5,12 @@
 #include "raytrace/hittables/hittable.h"
 #include "raytrace/hittables/hittable_list.h"
 
+struct BvhArrayNode {
+    Aabb bbox;
+    int left;
+    int right;
+};
+
 class BvhNodeSlicing : public Hittable {
     public:
         BvhNodeSlicing(HittableList list);
@@ -17,7 +23,7 @@ class BvhNodeSlicing : public Hittable {
     
     private:
         std::vector<shared_ptr<Hittable>> objects;
-        std::vector<Aabb> bvh;
+        std::vector<BvhArrayNode> bvh;
 
         bool hit_bvh(int i, const Ray&r, Interval ray_t, HitRecord& rec) const;
 };

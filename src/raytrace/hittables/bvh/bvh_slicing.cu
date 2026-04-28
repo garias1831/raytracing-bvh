@@ -18,14 +18,27 @@ inline int next_pow2(int k) {
     return k;
 }
 
+__global__ 
+void write_lastlevel_keys(int *keys, int n_lastlevel) {
+    int index = blockDim.x * blockIdx.x + threadIdx.x;
+    if (index >= n_lastlevel) return;
+    keys[index] = index;
+}
 
 __global__
 /// @brief Write level d to the bvh array.
 /// @param bvh 
 /// @param newlevel 
+/// @param[out] keys Unique ID assigned to each LASTLEVEL bbox,
+//                   sorted by the axis of the NEWLEVEL. Used
+//                   for linking BVH levels when we switch axes
 /// @param d Depth of the level to write
 /// @param n_newlevel 
-void write_bvh_kernel(Aabb *bvh, Aabb *newlevel, int d, int n_newlevel) {
+void write_bvh_kernel(BvhArrayNode *bvh, 
+                      Aabb *newlevel, 
+                      int *keys_lastlevel_sorted, 
+                      int d, int n_newlevel, 
+                      int n_lastlevel, bool writing_leaves=false) {
     int index = blockDim.x * blockIdx.x + threadIdx.x;
 
     if (index >= n_newlevel) {
@@ -33,7 +46,26 @@ void write_bvh_kernel(Aabb *bvh, Aabb *newlevel, int d, int n_newlevel) {
     }
 
     int istart = pow(2, d - 1) - 1;
-    bvh[istart + index] = newlevel[index];
+    int ibvh = istart + index;
+    bvh[ibvh].bbox = newlevel[index];
+
+    if (writing_leaves) {
+        bvh[ibvh].left = -1;
+        bvh[ibvh].right = -1;
+        return;
+    };
+
+    // Write in keys from the lastlevel
+    int i2 = 2 * index;
+    int inext = pow(2, d) - 1;
+    bvh[ibvh].left = inext + keys_lastlevel_sorted[i2];
+
+    if (i2 + 1 >= n_lastlevel) {
+        bvh[ibvh].right = -1;
+        return;
+    };
+    
+    bvh[ibvh].right = inext + keys_lastlevel_sorted[i2 + 1];
 }
 
 
@@ -45,7 +77,7 @@ void merge_bboxes_kernel(Aabb *lastlevel, Aabb *nextlevel, int n_lastlevel) {
     int index = blockDim.x * blockIdx.x + threadIdx.x;
 
     int i2 = 2 * index;
-    if (i2 >= n_lastlevel) return;    
+    if (i2 >= n_lastlevel) return;
     
     // If the bbox is unpaired, just propagate it up a level
     if (i2 == (n_lastlevel - 1)) {       
@@ -80,7 +112,7 @@ struct BoxCompare {
 /// @param objects Collection of scene objects. 
 /// @param[out] bvh_host Result buffer to store the bvh array. 
 /// @param n Number of objects in the scene.
-void make_slicing_bvh(std::vector<shared_ptr<Hittable>> objects, Aabb *bvh_host, size_t n) {
+void make_slicing_bvh(std::vector<shared_ptr<Hittable>> objects, BvhArrayNode *bvh_host, size_t n) {
     // ? Will the overhead of this conversion dominate the benefit we get from the GPU?
     // * Slight optimization: we might want to store the bboxes in the HittableList to
     // * avoid having this loop in the bvh construction
@@ -99,6 +131,9 @@ void make_slicing_bvh(std::vector<shared_ptr<Hittable>> objects, Aabb *bvh_host,
     Aabb *bboxes_nextlevel_device;
     cudaMalloc(&bboxes_nextlevel_device, n * sizeof(Aabb));
 
+    int *lastlevel_keys_device;
+    cudaMalloc(&lastlevel_keys_device, n * sizeof(int));
+
     //  * We store the BVH as an implicit tree over a backing array.
     // This has a few benefits. Firstly, it makes copying the resulting
     // structure back to the host much easier because we don't have to deal with
@@ -109,10 +144,10 @@ void make_slicing_bvh(std::vector<shared_ptr<Hittable>> objects, Aabb *bvh_host,
     // The main downside of this repr is that we might waste some memory,
     // expecially for large n slightly larger than a power of 2. 
 
-    Aabb *bvh_device;
+    BvhArrayNode *bvh_device;
     // If n is a power of 2, the max number of nodes
     // in the complete bintree is 2n - 1 (from geometric series). 
-    cudaMalloc(&bvh_device, (2 * next_pow2(n) - 1) * sizeof(Aabb));
+    cudaMalloc(&bvh_device, (2 * next_pow2(n) - 1) * sizeof(BvhArrayNode));
 
     cudaDeviceSynchronize();
 
@@ -127,29 +162,31 @@ void make_slicing_bvh(std::vector<shared_ptr<Hittable>> objects, Aabb *bvh_host,
     // TODO: when benchmarking, play around with the threadsPerBlock    
     int blockDim = 128;
     int gridDim = (n + blockDim - 1) / blockDim;
-    write_bvh_kernel<<<gridDim, blockDim>>>(bvh_device, bboxes_lastlevel_device, depth, n_bboxes);
+    write_bvh_kernel<<<gridDim, blockDim>>>(bvh_device, 
+        bboxes_lastlevel_device, 
+        lastlevel_keys_device,
+        depth,
+        n_bboxes, 
+        n_bboxes, true);
+   
     
     depth--;
     while (n_bboxes > 1) {
+        // This keys array is used to ensure proper linking of parents to
+        // children when the axis per level can change. 
+        // At a highlevel, we assign an id to each lastlevel bbox, which we
+        // reorder when we do the sort for each one according to the newlevel
+        // axis. Then consecutive keys correspond to the left/right children
+        // of the merged bbox in newlevel. 
+        write_lastlevel_keys<<<gridDim, blockDim>>>(lastlevel_keys_device, n_bboxes);
+        
         // Sort the level d + 1 bboxes along an axis
-
-        // ! Unlike the sequential code, here we pick 1 axis (x in this case) to sort.
-        // This is because alternating axes leads to an invalid tree construction;
-        // e.g if the leaves were sorted along x, and the d - 1 nodes are sorted along y...
-        // While this still should lead to a relatively balanced BVH, 
-        // we should definitely measure the impact on render time to see if
-        // it's an issue.
-        //
-        // A possible benefit of a fixed axis, however, is that we might be
-        // able to get away with a single sort for the whole construction,
-        // as the nextlevel bboxes will be in the same relative order
-        // as their predecessors after the merge.
-
-        int axis = 0;
-        thrust::sort(
+        int axis = random_int(0, 1);
+        thrust::sort_by_key(
             thrust::device, 
             bboxes_lastlevel_device, 
             bboxes_lastlevel_device + n_bboxes,
+            lastlevel_keys_device,
             BoxCompare(axis)
         );
 
@@ -159,12 +196,22 @@ void make_slicing_bvh(std::vector<shared_ptr<Hittable>> objects, Aabb *bvh_host,
 
         blockDim = 128;
         gridDim = (num_nextlevel_bboxes + blockDim - 1) / blockDim;
-        merge_bboxes_kernel<<<gridDim, blockDim>>>(bboxes_lastlevel_device, bboxes_nextlevel_device, n_bboxes);
+        merge_bboxes_kernel<<<gridDim, blockDim>>>(bboxes_lastlevel_device, 
+            bboxes_nextlevel_device, 
+            n_bboxes);
 
         // Write the new level to the bvh 
         blockDim = 128;
         gridDim = (num_nextlevel_bboxes + blockDim - 1) / blockDim;
-        write_bvh_kernel<<<gridDim, blockDim>>>(bvh_device, bboxes_nextlevel_device, depth, num_nextlevel_bboxes);
+        write_bvh_kernel<<<gridDim, blockDim>>>(
+            bvh_device, 
+            bboxes_nextlevel_device, 
+            lastlevel_keys_device,
+            depth, 
+            num_nextlevel_bboxes,
+            n_bboxes
+        );
+
         
         Aabb *tmp = bboxes_lastlevel_device;
         bboxes_lastlevel_device = bboxes_nextlevel_device;
@@ -184,5 +231,6 @@ void make_slicing_bvh(std::vector<shared_ptr<Hittable>> objects, Aabb *bvh_host,
 
     cudaFree(bboxes_lastlevel_device);
     cudaFree(bboxes_nextlevel_device);
+    cudaFree(lastlevel_keys_device);
     cudaFree(bvh_device);
 }
