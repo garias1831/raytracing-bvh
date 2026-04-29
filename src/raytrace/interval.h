@@ -1,6 +1,8 @@
 #ifndef INTERVAL_H
 #define INTERVAL_H
 
+#include <limits>
+
 class Interval {
     public:
         double min, max;

@@ -1,16 +1,32 @@
 #include "renderer.h"
 
+#include <iostream>
 #include <memory>
 #include <vector>
+#include "raytrace/hittables/bvh/bvh_topdown.h"
+#include "raytrace/hittables/circle.h"
 #include "raytrace/hittables/hittable.h"
 #include "util/raytrace.h"
 
+bool render_pixel_map_cuda(
+    const BvhNodeTopDown& world,
+    uint window_width,
+    uint window_height,
+    Point2 pixel00_loc,
+    Point2 source_loc,
+    std::vector<sf::Color>& colors_out
+);
 
 using std::make_unique;
 
 
 uint Renderer::get_window_width() const { return window_width; }
 uint Renderer::get_window_height() const { return window_height; }
+
+void Renderer::set_window_width(uint width) {
+    window_width = width;
+    initialize();
+}
 
 void Renderer::set_source_loc(Point2 source) {
     source_loc = source;
@@ -28,19 +44,45 @@ std::vector<std::unique_ptr<sf::Shape>> Renderer::world_graphics(const HittableL
 
 std::unique_ptr<sf::VertexArray> Renderer::pixel_map(const HittableList& world) const {
     sf::VertexArray pixels(sf::PrimitiveType::Points, window_width * window_height);
-    int p;
+    std::vector<sf::Color> colors;
+
+    bool rendered_on_gpu = false;
+    if (world.get_objects().size() == 1) {
+        auto topdown = std::dynamic_pointer_cast<BvhNodeTopDown>(world.get_objects()[0]);
+        if (topdown) {
+            rendered_on_gpu = render_pixel_map_cuda(
+                *topdown,
+                window_width,
+                window_height,
+                pixel00_loc,
+                source_loc,
+                colors
+            );
+        }
+    }
+
+    if (!rendered_on_gpu) {
+        colors.resize(window_width * window_height);
+        int p;
+        for (int j = 0; j < window_height; j++) {
+            for (int i = 0; i < window_width; i++) {
+                auto pixel_center = pixel00_loc + Point2(i, j);
+                auto ray_direction = source_loc - pixel_center;
+
+                Ray ray = Ray(pixel_center, ray_direction);
+                Color r_color = ray_color(ray, world);
+
+                p = window_width * j + i;
+                colors[p] = sf::Color(r_color.ir(), r_color.ig(), r_color.ib());
+            }
+        }
+    }
+
     for (int j = 0; j < window_height; j++) {
         for (int i = 0; i < window_width; i++) {
-            
-            auto pixel_center = pixel00_loc + Point2(i, j);
-            auto ray_direction = source_loc - pixel_center;
-
-            Ray ray = Ray(pixel_center, ray_direction);
-            Color r_color = ray_color(ray, world);
-
-            p = window_width * j + i;
+            int p = window_width * j + i;
             pixels[p].position = sf::Vector2(float(i), float(j));
-            pixels[p].color = sf::Color(r_color.ir(), r_color.ig(), r_color.ib());
+            pixels[p].color = colors[p];
         }
     }
 

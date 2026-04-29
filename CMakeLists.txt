@@ -3,6 +3,11 @@ project(raytrace LANGUAGES CXX CUDA)
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
+if (MSVC)
+    add_compile_options($<$<COMPILE_LANGUAGE:CXX>:/Zc:preprocessor>)
+    add_compile_options($<$<COMPILE_LANGUAGE:CUDA>:-Xcompiler=/Zc:preprocessor>)
+endif()
+
 include(FetchContent)
 FetchContent_Declare(SFML
     GIT_REPOSITORY https://github.com/SFML/SFML.git
@@ -15,8 +20,11 @@ FetchContent_MakeAvailable(SFML)
 add_executable(${PROJECT_NAME} 
     src/main.cpp
     src/render/renderer.cpp
+    src/render/renderer_cuda.cu
     src/render/scene_loader.cpp
     src/raytrace/interval.cpp
+    src/raytrace/hittables/bvh/bvh_topdown.cpp
+    src/raytrace/hittables/bvh/bvh_topdown.cu
 )
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_17)
 target_link_libraries(${PROJECT_NAME} PRIVATE SFML::Graphics)

@@ -40,6 +40,9 @@ class Circle : public Hittable {
 
         Aabb bounding_box() const override { return bbox; }
 
+        const Point2& get_center() const { return center; }
+        double get_radius() const { return radius; }
+
         std::unique_ptr<sf::Shape> to_sf(const Color& color) const override {
             sf::CircleShape rendered(radius);
             rendered.setOrigin(sf::Vector2f(radius, radius));

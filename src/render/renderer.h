@@ -19,6 +19,7 @@ class Renderer {
         uint get_window_width() const; 
         uint get_window_height() const;
 
+        void set_window_width(uint width);
         void set_source_loc(Point2 source);
 
         /** @brief Convert a collection of raytrace objects to sfml-renderable equivalents.*/

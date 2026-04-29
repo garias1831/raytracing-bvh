@@ -1,9 +1,16 @@
 #include "interval.h"
-#include "util/raytrace.h"
 
-Interval::Interval() : min(+infinity), max(-infinity) {}
+Interval::Interval()
+    : min(+std::numeric_limits<double>::infinity()),
+      max(-std::numeric_limits<double>::infinity()) {}
 
 Interval::Interval(double min, double max) : min(min), max(max) {}
 
-const Interval Interval::empty = Interval(+infinity, -infinity);
-const Interval Interval::universe = Interval(-infinity, +infinity);
+const Interval Interval::empty = Interval(
+    +std::numeric_limits<double>::infinity(),
+    -std::numeric_limits<double>::infinity()
+);
+const Interval Interval::universe = Interval(
+    -std::numeric_limits<double>::infinity(),
+    +std::numeric_limits<double>::infinity()
+);
