@@ -15,8 +15,19 @@ void configure_large_window(Renderer& renderer) {
     renderer.set_window_width(1400);
 }
 
-void random_100(HittableList& world, Renderer& renderer) {
-    configure_standard_window(renderer);
+void populate_random_circles(
+    HittableList& world,
+    Renderer& renderer,
+    int primitive_count,
+    double min_radius,
+    double max_radius,
+    bool use_large_window
+) {
+    if (use_large_window) {
+        configure_large_window(renderer);
+    } else {
+        configure_standard_window(renderer);
+    }
 
     uint window_width = renderer.get_window_width();
 	uint window_height = renderer.get_window_height();
@@ -26,7 +37,7 @@ void random_100(HittableList& world, Renderer& renderer) {
 	renderer.set_source_loc(source_loc);
     
     int cx, cy;
-    for (int c = 0; c < 100; c++) {
+    for (int c = 0; c < primitive_count; c++) {
         while(true) {
             cx = int(random_double(0, window_width));
             cy = int(random_double(0, window_height));
@@ -45,73 +56,48 @@ void random_100(HittableList& world, Renderer& renderer) {
             break;
         }
 
-        world.add(make_shared<Circle>(Circle(Point2(cx, cy), 10)));
+        world.add(make_shared<Circle>(Circle(Point2(cx, cy), min_radius + random_double(0, max_radius - min_radius))));
     }
+}
+
+void random_100(HittableList& world, Renderer& renderer) {
+    populate_random_circles(world, renderer, 100, 10.0, 10.0, false);
 }
 
 void random_dense(HittableList& world, Renderer& renderer) {
-    configure_large_window(renderer);
-
-    uint window_width = renderer.get_window_width();
-    uint window_height = renderer.get_window_height();
-
-    auto source_loc = Point2(window_width / 2, window_height / 2);
-    renderer.set_source_loc(source_loc);
-
-    int cx, cy;
-    for (int c = 0; c < 2000; c++) {
-        while (true) {
-            cx = int(random_double(0, window_width));
-            cy = int(random_double(0, window_height));
-
-            // Keep the light origin from being immediately occluded.
-            if (!Interval(0, source_loc.x() - 20).surrounds(cx) &&
-                !Interval(source_loc.x() + 20, window_width).surrounds(cx)) {
-                continue;
-            }
-
-            if (!Interval(0, source_loc.y() - 20).surrounds(cy) &&
-                !Interval(source_loc.y() + 20, window_height).surrounds(cy)) {
-                continue;
-            }
-
-            break;
-        }
-
-        world.add(make_shared<Circle>(Circle(Point2(cx, cy), 4 + random_double(0, 10))));
-    }
+    populate_random_circles(world, renderer, 2000, 4.0, 14.0, true);
 }
 
 void random_10000(HittableList& world, Renderer& renderer) {
-    configure_large_window(renderer);
+    populate_random_circles(world, renderer, 10000, 3.0, 10.0, true);
+}
 
-    uint window_width = renderer.get_window_width();
-    uint window_height = renderer.get_window_height();
+void benchmark_random_scene(
+    HittableList& world,
+    Renderer& renderer,
+    int primitive_count
+) {
+    double min_radius = 1.5;
+    double max_radius = 5.0;
 
-    auto source_loc = Point2(window_width / 2, window_height / 2);
-    renderer.set_source_loc(source_loc);
-
-    int cx, cy;
-    for (int c = 0; c < 10000; c++) {
-        while (true) {
-            cx = int(random_double(0, window_width));
-            cy = int(random_double(0, window_height));
-
-            if (!Interval(0, source_loc.x() - 20).surrounds(cx) &&
-                !Interval(source_loc.x() + 20, window_width).surrounds(cx)) {
-                continue;
-            }
-
-            if (!Interval(0, source_loc.y() - 20).surrounds(cy) &&
-                !Interval(source_loc.y() + 20, window_height).surrounds(cy)) {
-                continue;
-            }
-
-            break;
-        }
-
-        world.add(make_shared<Circle>(Circle(Point2(cx, cy), 3 + random_double(0, 7))));
+    if (primitive_count <= 1000) {
+        min_radius = 3.0;
+        max_radius = 9.0;
+    } else if (primitive_count <= 10000) {
+        min_radius = 2.0;
+        max_radius = 6.0;
+    } else if (primitive_count <= 25000) {
+        min_radius = 1.5;
+        max_radius = 5.0;
+    } else if (primitive_count <= 50000) {
+        min_radius = 1.25;
+        max_radius = 4.0;
+    } else {
+        min_radius = 1.0;
+        max_radius = 3.0;
     }
+
+    populate_random_circles(world, renderer, primitive_count, min_radius, max_radius, true);
 }
 
 void mixed_shapes(HittableList& world, Renderer& renderer) {
@@ -156,6 +142,21 @@ void SceneLoader::load(int scene_id, HittableList& world, Renderer& renderer) co
             break;
         case 5:
             random_10000(world, renderer);
+            break;
+        case 6:
+            benchmark_random_scene(world, renderer, 1000);
+            break;
+        case 7:
+            benchmark_random_scene(world, renderer, 10000);
+            break;
+        case 8:
+            benchmark_random_scene(world, renderer, 25000);
+            break;
+        case 9:
+            benchmark_random_scene(world, renderer, 50000);
+            break;
+        case 10:
+            benchmark_random_scene(world, renderer, 100000);
             break;
         default:
             throw std::invalid_argument("Exceeded maximum scene_id");

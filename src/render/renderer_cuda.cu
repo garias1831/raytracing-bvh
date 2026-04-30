@@ -1,11 +1,12 @@
 #include <cstdint>
-#include <stdexcept>
+#include <cmath>
 #include <vector>
 
 #include <cuda_runtime.h>
 #include <SFML/Graphics/Color.hpp>
 
 #include "render/renderer.h"
+#include "raytrace/hittables/bvh/bvh_slicing.h"
 #include "raytrace/hittables/bvh/bvh_topdown.h"
 #include "raytrace/hittables/circle.h"
 #include "raytrace/hittables/rectangle.h"
@@ -190,6 +191,119 @@ namespace {
             255
         };
     }
+
+    bool build_gpu_primitives(
+        const std::vector<shared_ptr<Hittable>>& objects,
+        std::vector<GpuPrimitive>& primitives_host
+    ) {
+        primitives_host.clear();
+        primitives_host.reserve(objects.size());
+
+        for (const auto& object : objects) {
+            auto circle = std::dynamic_pointer_cast<Circle>(object);
+            if (circle) {
+                primitives_host.push_back({
+                    GpuPrimitiveCircle,
+                    circle->get_center().x(),
+                    circle->get_center().y(),
+                    circle->get_radius(),
+                    0.0
+                });
+                continue;
+            }
+
+            auto rectangle = std::dynamic_pointer_cast<Rectangle>(object);
+            if (rectangle) {
+                primitives_host.push_back({
+                    GpuPrimitiveRectangle,
+                    rectangle->get_min_corner().x(),
+                    rectangle->get_min_corner().y(),
+                    rectangle->get_max_corner().x(),
+                    rectangle->get_max_corner().y()
+                });
+                continue;
+            }
+
+            return false;
+        }
+
+        return true;
+    }
+
+    bool render_pixel_map_cuda_impl(
+        const std::vector<GpuPrimitive>& primitives_host,
+        const std::vector<GpuBvhNode>& nodes_host,
+        uint window_width,
+        uint window_height,
+        Point2 pixel00_loc,
+        Point2 source_loc,
+        std::vector<sf::Color>& colors_out
+    ) {
+        GpuPrimitive* primitives_device = nullptr;
+        GpuBvhNode* nodes_device = nullptr;
+        GpuColor* colors_device = nullptr;
+
+        int pixel_count = int(window_width * window_height);
+        colors_out.resize(pixel_count);
+
+        cudaError_t status = cudaSuccess;
+        status = cudaMalloc(&primitives_device, primitives_host.size() * sizeof(GpuPrimitive));
+        if (status != cudaSuccess) return false;
+        status = cudaMalloc(&nodes_device, nodes_host.size() * sizeof(GpuBvhNode));
+        if (status != cudaSuccess) {
+            cudaFree(primitives_device);
+            return false;
+        }
+        status = cudaMalloc(&colors_device, pixel_count * sizeof(GpuColor));
+        if (status != cudaSuccess) {
+            cudaFree(nodes_device);
+            cudaFree(primitives_device);
+            return false;
+        }
+
+        cudaMemcpy(primitives_device, primitives_host.data(), primitives_host.size() * sizeof(GpuPrimitive), cudaMemcpyHostToDevice);
+        cudaMemcpy(nodes_device, nodes_host.data(), nodes_host.size() * sizeof(GpuBvhNode), cudaMemcpyHostToDevice);
+
+        int block_dim = 256;
+        int grid_dim = (pixel_count + block_dim - 1) / block_dim;
+        render_pixels_kernel<<<grid_dim, block_dim>>>(
+            nodes_device,
+            int(nodes_host.size()),
+            primitives_device,
+            int(window_width),
+            int(window_height),
+            pixel00_loc.x(),
+            pixel00_loc.y(),
+            source_loc.x(),
+            source_loc.y(),
+            colors_device
+        );
+
+        status = cudaDeviceSynchronize();
+        if (status != cudaSuccess) {
+            cudaFree(colors_device);
+            cudaFree(nodes_device);
+            cudaFree(primitives_device);
+            return false;
+        }
+
+        std::vector<GpuColor> raw_colors(pixel_count);
+        status = cudaMemcpy(raw_colors.data(), colors_device, pixel_count * sizeof(GpuColor), cudaMemcpyDeviceToHost);
+
+        cudaFree(colors_device);
+        cudaFree(nodes_device);
+        cudaFree(primitives_device);
+
+        if (status != cudaSuccess) {
+            return false;
+        }
+
+        for (int i = 0; i < pixel_count; ++i) {
+            colors_out[i] = sf::Color(raw_colors[i].r, raw_colors[i].g, raw_colors[i].b, raw_colors[i].a);
+        }
+
+        return true;
+    }
 }
 
 bool render_pixel_map_cuda(
@@ -201,36 +315,8 @@ bool render_pixel_map_cuda(
     std::vector<sf::Color>& colors_out
 ) {
     std::vector<GpuPrimitive> primitives_host;
-    primitives_host.reserve(world.get_objects().size());
-
-    for (const auto& object : world.get_objects()) {
-        auto circle = std::dynamic_pointer_cast<Circle>(object);
-        if (circle) {
-            primitives_host.push_back({
-                GpuPrimitiveCircle,
-                circle->get_center().x(),
-                circle->get_center().y(),
-                circle->get_radius(),
-                0.0
-            });
-            continue;
-        }
-
-        auto rectangle = std::dynamic_pointer_cast<Rectangle>(object);
-        if (rectangle) {
-            primitives_host.push_back({
-                GpuPrimitiveRectangle,
-                rectangle->get_min_corner().x(),
-                rectangle->get_min_corner().y(),
-                rectangle->get_max_corner().x(),
-                rectangle->get_max_corner().y()
-            });
-            continue;
-        }
-
-        if (!circle && !rectangle) {
-            return false;
-        }
+    if (!build_gpu_primitives(world.get_objects(), primitives_host)) {
+        return false;
     }
 
     std::vector<GpuBvhNode> nodes_host;
@@ -248,68 +334,65 @@ bool render_pixel_map_cuda(
         });
     }
 
-    GpuPrimitive* primitives_device = nullptr;
-    GpuBvhNode* nodes_device = nullptr;
-    GpuColor* colors_device = nullptr;
-
-    int pixel_count = int(window_width * window_height);
-    colors_out.resize(pixel_count);
-
-    cudaError_t status = cudaSuccess;
-    status = cudaMalloc(&primitives_device, primitives_host.size() * sizeof(GpuPrimitive));
-    if (status != cudaSuccess) return false;
-    status = cudaMalloc(&nodes_device, nodes_host.size() * sizeof(GpuBvhNode));
-    if (status != cudaSuccess) {
-        cudaFree(primitives_device);
-        return false;
-    }
-    status = cudaMalloc(&colors_device, pixel_count * sizeof(GpuColor));
-    if (status != cudaSuccess) {
-        cudaFree(nodes_device);
-        cudaFree(primitives_device);
-        return false;
-    }
-
-    cudaMemcpy(primitives_device, primitives_host.data(), primitives_host.size() * sizeof(GpuPrimitive), cudaMemcpyHostToDevice);
-    cudaMemcpy(nodes_device, nodes_host.data(), nodes_host.size() * sizeof(GpuBvhNode), cudaMemcpyHostToDevice);
-
-    int block_dim = 256;
-    int grid_dim = (pixel_count + block_dim - 1) / block_dim;
-    render_pixels_kernel<<<grid_dim, block_dim>>>(
-        nodes_device,
-        int(nodes_host.size()),
-        primitives_device,
-        int(window_width),
-        int(window_height),
-        pixel00_loc.x(),
-        pixel00_loc.y(),
-        source_loc.x(),
-        source_loc.y(),
-        colors_device
+    return render_pixel_map_cuda_impl(
+        primitives_host,
+        nodes_host,
+        window_width,
+        window_height,
+        pixel00_loc,
+        source_loc,
+        colors_out
     );
+}
 
-    status = cudaDeviceSynchronize();
-    if (status != cudaSuccess) {
-        cudaFree(colors_device);
-        cudaFree(nodes_device);
-        cudaFree(primitives_device);
+bool render_pixel_map_cuda(
+    const BvhNodeSlicing& world,
+    uint window_width,
+    uint window_height,
+    Point2 pixel00_loc,
+    Point2 source_loc,
+    std::vector<sf::Color>& colors_out
+) {
+    std::vector<GpuPrimitive> primitives_host;
+    if (!build_gpu_primitives(world.get_objects(), primitives_host)) {
         return false;
     }
 
-    std::vector<GpuColor> raw_colors(pixel_count);
-    status = cudaMemcpy(raw_colors.data(), colors_device, pixel_count * sizeof(GpuColor), cudaMemcpyDeviceToHost);
+    std::vector<GpuBvhNode> nodes_host;
+    nodes_host.reserve(world.get_bvh().size());
 
-    cudaFree(colors_device);
-    cudaFree(nodes_device);
-    cudaFree(primitives_device);
+    const int object_count = int(world.get_objects().size());
+    int pow2_leaf_count = 1;
+    while (pow2_leaf_count < object_count) {
+        pow2_leaf_count <<= 1;
+    }
+    const int slicing_leaf_start = pow2_leaf_count - 1;
 
-    if (status != cudaSuccess) {
-        return false;
+    for (int i = 0; i < int(world.get_bvh().size()); ++i) {
+        const auto& node = world.get_bvh()[i];
+        const bool is_leaf = i >= slicing_leaf_start;
+        const int primitive_index = i - slicing_leaf_start;
+        const bool valid_leaf = is_leaf && primitive_index >= 0 && primitive_index < object_count;
+
+        nodes_host.push_back({
+            node.bbox.x.min,
+            node.bbox.x.max,
+            node.bbox.y.min,
+            node.bbox.y.max,
+            valid_leaf ? -1 : node.left,
+            valid_leaf ? -1 : node.right,
+            valid_leaf ? primitive_index : -1,
+            valid_leaf ? 1 : 0
+        });
     }
 
-    for (int i = 0; i < pixel_count; ++i) {
-        colors_out[i] = sf::Color(raw_colors[i].r, raw_colors[i].g, raw_colors[i].b, raw_colors[i].a);
-    }
-
-    return true;
+    return render_pixel_map_cuda_impl(
+        primitives_host,
+        nodes_host,
+        window_width,
+        window_height,
+        pixel00_loc,
+        source_loc,
+        colors_out
+    );
 }

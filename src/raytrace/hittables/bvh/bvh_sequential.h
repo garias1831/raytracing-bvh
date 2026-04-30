@@ -4,9 +4,65 @@
 #include "raytrace/hittables/aabb.h"
 #include "raytrace/hittables/hittable.h"
 #include "raytrace/hittables/hittable_list.h"
+#include "split_heuristic.h"
 
 #include <algorithm>
 
+inline double sequential_bbox_cost(const Aabb& bbox) {
+    return bbox.x.size() * bbox.y.size();
+}
+
+inline int sequential_choose_widest_axis(
+    const std::vector<shared_ptr<Hittable>>& objects,
+    size_t start,
+    size_t end
+) {
+    Aabb bbox = objects[start]->bounding_box();
+    for (size_t i = start + 1; i < end; ++i) {
+        bbox = Aabb(bbox, objects[i]->bounding_box());
+    }
+
+    return bbox.x.size() >= bbox.y.size() ? 0 : 1;
+}
+
+inline int sequential_choose_sah_split_index(
+    const std::vector<shared_ptr<Hittable>>& objects,
+    size_t start,
+    size_t end
+) {
+    const size_t object_span = end - start;
+    if (object_span <= 2) {
+        return int(start + object_span / 2);
+    }
+
+    std::vector<Aabb> prefix(object_span);
+    std::vector<Aabb> suffix(object_span);
+
+    prefix[0] = objects[start]->bounding_box();
+    for (size_t i = 1; i < object_span; ++i) {
+        prefix[i] = Aabb(prefix[i - 1], objects[start + i]->bounding_box());
+    }
+
+    suffix[object_span - 1] = objects[end - 1]->bounding_box();
+    for (size_t i = object_span - 1; i > 0; --i) {
+        suffix[i - 1] = Aabb(suffix[i], objects[start + i - 1]->bounding_box());
+    }
+
+    double best_cost = infinity;
+    size_t best_offset = object_span / 2;
+    for (size_t left_count = 1; left_count < object_span; ++left_count) {
+        const size_t right_count = object_span - left_count;
+        const double cost =
+            sequential_bbox_cost(prefix[left_count - 1]) * double(left_count) +
+            sequential_bbox_cost(suffix[left_count]) * double(right_count);
+        if (cost < best_cost) {
+            best_cost = cost;
+            best_offset = left_count;
+        }
+    }
+
+    return int(start + best_offset);
+}
 
 /// @brief Sequential BVH implementation from the RTweekend tutorial 
 class BvhNodeSequential : public Hittable {
@@ -20,6 +76,9 @@ class BvhNodeSequential : public Hittable {
 
         BvhNodeSequential(std::vector<shared_ptr<Hittable>> objects, size_t start, size_t end) {
             int axis = random_int(0, 1);
+            if (get_bvh_split_heuristic() == BvhSplitHeuristic::Sah && end > start) {
+                axis = sequential_choose_widest_axis(objects, start, end);
+            }
 
             auto comparator = (axis == 0) ? box_x_compare : box_y_compare;
 
@@ -35,6 +94,9 @@ class BvhNodeSequential : public Hittable {
                 std::sort(std::begin(objects) + start, std::begin(objects) + end, comparator);
 
                 auto mid = start + object_span/2;
+                if (get_bvh_split_heuristic() == BvhSplitHeuristic::Sah) {
+                    mid = size_t(sequential_choose_sah_split_index(objects, start, end));
+                }
                 left = make_shared<BvhNodeSequential>(objects, start, mid);
                 right = make_shared<BvhNodeSequential>(objects, mid, end);
             }

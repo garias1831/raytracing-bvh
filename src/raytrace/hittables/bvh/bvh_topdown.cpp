@@ -1,9 +1,6 @@
 #include "bvh_topdown.h"
 
-#include <cmath>
-
 // Cuda forward declarations
-int next_pow2(int k);
 void make_topdown_bvh(
     std::vector<shared_ptr<Hittable>> objects,
     BvhArrayNode* bvh_host,
@@ -31,7 +28,7 @@ BvhNodeTopDown::BvhNodeTopDown(std::vector<shared_ptr<Hittable>> objects, size_t
         objects.begin() + end
     );
 
-    std::vector<BvhArrayNode> bvh_arr(2 * next_pow2(int(n)) - 1);
+    std::vector<BvhArrayNode> bvh_arr(2 * int(n) - 1);
     std::vector<int> ordered_indices(n);
 
     make_topdown_bvh(range_objects, bvh_arr.data(), ordered_indices.data(), n);

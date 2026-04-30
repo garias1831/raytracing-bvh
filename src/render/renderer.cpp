@@ -3,10 +3,20 @@
 #include <iostream>
 #include <memory>
 #include <vector>
+#include "raytrace/hittables/bvh/bvh_slicing.h"
 #include "raytrace/hittables/bvh/bvh_topdown.h"
 #include "raytrace/hittables/circle.h"
 #include "raytrace/hittables/hittable.h"
 #include "util/raytrace.h"
+
+bool render_pixel_map_cuda(
+    const BvhNodeSlicing& world,
+    uint window_width,
+    uint window_height,
+    Point2 pixel00_loc,
+    Point2 source_loc,
+    std::vector<sf::Color>& colors_out
+);
 
 bool render_pixel_map_cuda(
     const BvhNodeTopDown& world,
@@ -58,6 +68,19 @@ std::unique_ptr<sf::VertexArray> Renderer::pixel_map(const HittableList& world) 
                 source_loc,
                 colors
             );
+        }
+        else {
+            auto slicing = std::dynamic_pointer_cast<BvhNodeSlicing>(world.get_objects()[0]);
+            if (slicing) {
+                rendered_on_gpu = render_pixel_map_cuda(
+                    *slicing,
+                    window_width,
+                    window_height,
+                    pixel00_loc,
+                    source_loc,
+                    colors
+                );
+            }
         }
     }
 

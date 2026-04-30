@@ -23,6 +23,8 @@ add_executable(${PROJECT_NAME}
     src/render/renderer_cuda.cu
     src/render/scene_loader.cpp
     src/raytrace/interval.cpp
+    src/raytrace/hittables/bvh/bvh_slicing.cpp
+    src/raytrace/hittables/bvh/bvh_slicing.cu
     src/raytrace/hittables/bvh/bvh_topdown.cpp
     src/raytrace/hittables/bvh/bvh_topdown.cu
 )
