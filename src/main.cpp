@@ -540,8 +540,7 @@ int main(int argc, char* argv[]) {
 		std::cout << "BVH doesn't visualizer for the serial case, it takes too long to render\n";
 	}
 
-	// Before ray rendering, initialize the BVH
-	world = HittableList(bvh);
+	
 
 	// Create the sfml window
 	uint window_width = renderer.get_window_width();
@@ -554,6 +553,9 @@ int main(int argc, char* argv[]) {
 
 	// Create the sfml graphics repr for each hittable in the world
 	auto world_graphics = renderer.world_graphics(world);
+
+	// Before ray rendering, initialize the BVH
+	world = HittableList(bvh);
 	
 	// Create the pixelmap where we render rays without blocking the window thread
 	auto pixels_future = std::async(std::launch::async, [&renderer, &world]() {
